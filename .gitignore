@@ -1,0 +1,5 @@
+static
+templates
+myapp.py
+venv
+*__pycache__
