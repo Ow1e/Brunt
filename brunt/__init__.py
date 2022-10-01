@@ -1,3 +1,5 @@
+"""Fixing the web from slow react websites"""
+
 from flask_socketio import SocketIO, emit
 from flask import escape
 import json
