@@ -3,7 +3,7 @@ import setuptools
   
 setuptools.setup(
     name="brunt",
-    version="0.1",
+    version="0.2",
     author="Owen Shaule",
     author_email="hello@cyclone.biz",
     packages=["brunt"],
