@@ -2,7 +2,7 @@ import setuptools
   
   
 setuptools.setup(
-    name="Brunt",
+    name="brunt",
     version="0.1",
     author="Owen Shaule",
     author_email="hello@cyclone.biz",
