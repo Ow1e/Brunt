@@ -1,11 +1,16 @@
 from flask_socketio import SocketIO, emit
+from flask import escape
 import json
 from time import sleep
 
 BRUNT_VERSION = "0.1-alpha"
 
+def filter_dummy(name, args):
+    """Takes in kwargs of name, args. Takes out True/False"""
+    return True
+
 class Property:
-    def __init__(self, name : str, callback, type : str, apply : str, args : dict, subscribe = False, extentions = {}) -> None:
+    def __init__(self, name : str, callback, type : str, apply : str, subscribe = False, extentions = {}) -> None:
         """
         Brunt fetch property
         ```python
@@ -21,29 +26,24 @@ class Property:
         Callback: The function to callback too  
         Type: Can be `onload`, `lazy` or `instant`  
         Apply: Can be `text` or `href` (Extention support?)  
-        Args: Arguments for the callback (Dictionary only)
         Subscribe: Can be set to `False` or to to a integer in mileseconds for reloading data
-        Extentions: A dictionary containing custom values
-            Images: {"classes": [], "width": 0, "height": 0}
         """
         self.name = name
         self.callback = callback
         self.type = type
         self.apply = apply
-        self.args = args
         self.subscribe = subscribe
         self.extentions = extentions
 
     def dupe(self):
         return Property(self)
 
-    def set_args(self, newargs):
-        self.args = newargs
-
 class Brunt:
-    def __init__(self, app, subscribing = True) -> None:
+    def __init__(self, app, filter = filter_dummy) -> None:
         self.__app = app
         self.callbacks = {}
+        self.properties = {}
+        self.filter = filter
 
         io = SocketIO(app) 
         self.socket = io
@@ -51,6 +51,10 @@ class Brunt:
             CLIENT > Server = {request: {myapp.saysomething: {myargs : this, etc, etc}, etc, etc}, etc, etc}
             SERVER > Client = {"receive": {myapp.saysomething: "My String"}}
         """
+
+        @app.context_processor
+        def inject_brunt():
+            return {"brunt": self.web}
 
         @io.on("ping")
         def ping(json):
@@ -66,17 +70,34 @@ class Brunt:
             cache = {}
             for i in json.get("request", {}):
                 if i["name"] in self.callbacks:
-                    cache[i["name"]] = self.callbacks[i["name"]](**i["args"])
+                    if self.filter(name=i["name"], args=i["args"]):
+                        if i["args"]==[]:
+                            cache[i["name"]] = self.callbacks[i["name"]]()
+                        else:
+                            cache[i["name"]] = self.callbacks[i["name"]](**i["args"])
+                    else:
+                        emit("reject", {"name": i["name"]})
             return {"resources": cache}
 
-    def get(self, property : Property):
+    def get(self, property : Property, arguments):
         if not property.name in self.callbacks:
             self.setup_callback(property)
+
+        general = f"args='{json.dumps(arguments)}' "+f'point="{property.name}" type="{property.type}" apply="{property.apply}" sub={property.subscribe}'
         if property.apply == "text":
-            args = f"args='{json.dumps(property.args)}'"
-            base = f'<brunt brunting point="{property.name}" type="{property.type}" apply="{property.apply}" {args} sub={property.subscribe}></brunt>'
-            base = base.replace("><", f">{property.callback(**property.args)}<", 1)
+            base = f'<brunt brunting {general}></brunt>'
+            base = base.replace("><", f">{property.callback(**arguments)}<", 1)
             return base
+        else:
+            return general
+
+    def add_prop(self, property : Property):
+        self.setup_callback(property)
+        self.properties[property.name] = property
+
+    def web(self, name, args = {}):
+        property = self.properties[name]
+        return self.get(property, args)
 
     def setup_callback(self, property : Property):
         self.callbacks[property.name] = property.callback

@@ -34,7 +34,7 @@ addEventListener('load', (event) => {
     });
 
     socket.on("bounce", (json) => {
-        elems = document.getElementsByTagName("brunt");
+        elems = document.querySelectorAll("[brunting]");
         let list = {}; // Goes by id : list : elements (one peice of data can go to multiple elements)
         let request = {"request": []};
         i = 0;
