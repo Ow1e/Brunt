@@ -64,7 +64,6 @@ class Brunt:
 
         @io.on("report")
         def report(json):
-            sleep(1)
             emit("bounce")
 
         @io.on("request")
